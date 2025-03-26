@@ -8,3 +8,9 @@
 
 **2.实现高效的端到端声音、情感、口音和语速可控的语音对话**  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;模型同时通过连续特征和文本将大语言模型和一个轻量级语音解码器连接起来。大语言模型产生的连续特征确保语音监督信号能够以端到端方式反向传播到全部模型参数，从而支持更高的能力上限
+
+# 3、模型结构
+
+<div align=center>
+  <img src="https://github.com/user-attachments/assets/61c33131-bdc3-4f2a-8372-f85a2c0beac8" width="500" />
+</div>!
