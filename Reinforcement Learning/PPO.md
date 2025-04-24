@@ -54,12 +54,43 @@ critic的本质目标是是在每一个状态st下预测，如果从这里继续
 Actor接收上文St，产生token At，即输出概率P(At|St)，Critic模型根据St，At，产生对总收益的预测Vt。那么Actor_loss = - ∑Vt*logP(At|St)  
 需要最小化这个损失，直观理解上，Vt>0，证明critic给了当前采取动作的正反馈，因此提高P(At|St)，从而减小loss；Vt<0，意味着Critic对Actor给了负反馈，所以要降低P(At｜St)，从而达到减小loss的作用。  
 （2）引入优势  
-对于NLP任务来说，如果Critic对At对总收益预测为Vt，但实际执行At后的总收益是Rt + βVt+1 ，那么可以定义优势为Advt = Rt + βVt+1 - Vt  
+对于NLP任务来说，如果Critic对At对总收益预测为Vt，但实际执行At后的总收益是Rt + βVt+1 ，那么可以定义优势为Advt = Rt + βVt+1 - Vt 【GPT认为Advt=R-Vt,而非后面介绍的动归】 
 用优势来替换掉原来预测的总收益，则此刻Actor_loss = -∑Advt * logP(At|St)   
-（3）重新设计Rt（非R）  
+（3）重新设计Rt（非R）  【这一节属于人工设计奖励的范畴，据GPT所言，标准PPO中，认为每一个step的reward都是R】
 按照上述的理解，Rt应该表示每个Actor产出token At带来的即时收益，然而并非如此，在deepspeed的RLHF实践中，对Rt做了另一种设计，具体见下图
 <div align=center>
   <img src="https://github.com/user-attachments/assets/d6a12075-030f-4dc7-8ce2-f0bf27235f61" width="500" />
 </div>
-其中kl_ctl为一个控制比例的缩放因子，而-log(..)为KL散度计算公式，目的是防止训歪。  
-所以综上，当t != T时，即非最后一个token时，Rt更加关心Actor有没有在Ref的约束下生产tokenAt，而当t = T时，不仅关心是否遵从了Ref的约束，也关心真正的收益R（此时Rt就是上面提到的R）
+其中kl_ctl为一个控制比例的缩放因子，而-log(..)为KL散度计算公式，目的是防止训歪。    
+所以综上，当t != T时，即非最后一个token时，Rt更加关心Actor有没有在Ref的约束下生产tokenAt，而当t = T时，不仅关心是否遵从了Ref的约束，也关心真正的奖励R（此时Rt就是上面提到的R）
+（4）重新设计优势  
+我们在引入优势的时候，替换了总收益Vt，而根据Vt的表达式可知，Vt在设计上考虑了未来的总收益，所以同理我们也可以这样改造优势，对于优势而言，也要考量未来的优势   
+
+  从而可得Advt = (Rt + βVt+1 - Vt) + θ*γ*Advt+1 ，其中γ是一个常量，即权衡因子。  
+  那么如何计算Advt+1,可以发现最后一个时刻，未来收益Vt+1和未来优势Advt+1都为0，从而可得AdvT = RT-VT，T代表最后一个时刻，从而可以继续从后往前，把所有时刻的优势都计算出来 
+ 
+（5）PPO-epoch：引入新约束  
+总结目前的训练流程：  
+- 第一步：准备一个batch的prompts
+- 第二步：将这个batch的prompts喂给Actor模型，生成对应的responses
+- 第三步：将prompt+responses喂给Critic/Reward/Reference模型，生成用于计算actor/critic loss的数据，强化学习中称这些数据为经验
+- 第四步：根据loss更新Actor和Critic模型
+
+  计算Actor_loss的步骤:首先Reward模型会给出一个最终的奖励信号R，而Reference可以计算每个token的prob，从而根据这些信息，可以计算出来瞬时奖励Rt；同样的Critic模型会预测每个时刻的Vt，拿最后一个时刻T的VT用于计算最后一个时刻的优势AdvT,从而根据动态规划往前计算出来每个时刻的优势Advt，有了Advt，自然我们就可以计算一个句子的Actor_loss
+
+然而一个batch的经验值被用于n次模型更新：在强化学习中，收集一个batch的经验非常耗费时间，对应PPO，收集一次经验，需要等四个模型都推理完才可以，而这样却仅更新一次loss  
+而如果我们想让一个batch的经验值被重复使用ppo_epochs次，等价于我们想要Actor在这个过程中，模拟和环境交互ppo_epochs次。 
+其实就是更新后的Actor能模仿最开始的Actor，从而达成模拟的效果  
+<div align=center>
+  <img src="https://github.com/user-attachments/assets/a32c7773-0774-4c13-92be-b95d5cb01fa1" width="500" />
+</div>  
+其中Pold代表真正吃了batch的经验的Actor，而P表示ppo_epochs实时迭代更新的Actor，这个公式也可以理解为：在Actor想通过模拟交互的方式，使用一个batch的经验值更新自己时，它需要收到真正吃到batch的那个时刻的Actor的约束，这样才能在有效利用batch，提升训练速度的基础上，保持训练的稳定。另外相比之前的Actor_loss丢弃了log，设计到了重要性采样的内容  
+同时对 P(At/St)/Pold(At/St)，设置一个范围，比如(0.8，1.2)，超过这个范围就裁剪到范围边缘，从而保证参数不进行突变，而一旦超过这个范围后，认为这部分loss无关于Actor模型，停止更新，综上，此时actor_loss设计如下图：  
+<div align=center>
+  <img src="https://github.com/user-attachments/assets/812a6848-84f0-49bc-b0c1-65a705f3c4dc" width="500" />
+</div>  
+（6）小结：
+- 我们已经对Rt进行来改造，使其能够衡量Actor模型是否遵从了Ref模型的约束  
+- 我们已经对Advt进行改造，使其不仅考虑了当前时刻的优势，还考虑了未来的优势
+- 我们重复利用了1个batch的数据，使本来只能被用来做1次模型更新的它现在能被用来做ppo_epochs次模型更新。我们使用真正吃了batch，产出经验值的那个时刻的Actor分布来约束ppo_epochs中更新的Actor分布  
+-我们考虑了剪裁机制（clip），在ppo_epochs次更新中，一旦Actor的更新幅度超过我们的控制范围，则不对它进行参数更新。
