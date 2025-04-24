@@ -14,3 +14,16 @@
   具体而言 t时刻状态s的总收益 = 身处状态s能带来的即时收益 + 从状态s出发后能带来的未来收益  
   写成表达式为：Vt = Rt + βVt+1  
   其中Vt代表t时刻的总收益，Rt代表t时刻即时收益，Vt+1代表t+1时刻的总收益，β代表折扣因子，决定在多大程度上考虑将“未来收益”纳入到“当下收益”  
+# 2、在NLP中如何理解上述角色定义 
+在NLP中，t时刻，模型根据上文产生一个token，这个token即对应着强化学习中的动作，记为At，此时模型产出token At对应着的即时收益为Rt（按1.1应为Rt+1，为方便记为Rt），总收益为Vt，此时模型的状态由St变为St+1，也就是从“上文”变成“上文+新产出的token”  
+# 3、PPO中的四个模型
+## 3.1 Actor Model
+即要训练的目标语言模型，一般用SFT阶段产出的SFT模型来初始化。最终目的是让Actor模型产生能符合人类喜欢的response。  
+策略为喂给Actor一条prompt，生成对应的response，然后将“prompt+response”送入奖励-loss体系计算loss更新Actor模型  
+## 3.2 Reference Model
+一般也用SFT阶段得到的SFT模型做初始化，训练过程中，参数冻结，作用是防止模型训歪，具体方法是使用KL散度，具体公式见下图：
+<div align=center>
+  <img src="https://github.com/user-attachments/assets/2f26803b-d508-4a6e-a1a1-67ae65e53fb9" width="500" />
+</div>
+
+  
