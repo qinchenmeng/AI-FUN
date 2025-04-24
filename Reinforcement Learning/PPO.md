@@ -89,7 +89,7 @@ Actor接收上文St，产生token At，即输出概率P(At|St)，Critic模型根
 <div align=center>
   <img src="https://github.com/user-attachments/assets/812a6848-84f0-49bc-b0c1-65a705f3c4dc" width="500" />
 </div>  
-（6）小结：
+（6）小结  
 - 我们已经对Rt进行来改造，使其能够衡量Actor模型是否遵从了Ref模型的约束  
 - 我们已经对Advt进行改造，使其不仅考虑了当前时刻的优势，还考虑了未来的优势
 - 我们重复利用了1个batch的数据，使本来只能被用来做1次模型更新的它现在能被用来做ppo_epochs次模型更新。我们使用真正吃了batch，产出经验值的那个时刻的Actor分布来约束ppo_epochs中更新的Actor分布  
