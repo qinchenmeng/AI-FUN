@@ -25,5 +25,8 @@
 <div align=center>
   <img src="https://github.com/user-attachments/assets/2f26803b-d508-4a6e-a1a1-67ae65e53fb9" width="500" />
 </div>
+KL散度衡量的是从Q走到P要花多少额外的信息代价，DKL(P||Q) != DKL(Q||P)，并且非负仅当两者相同时等号成立。  
 
+对于Actor Model输出response时，对每个生成的token都会有对应的概率，同样的对于Ref模型，将Actor生成的prompt+response也喂给它，同样能给出每个token的prob结果  
+  
   
