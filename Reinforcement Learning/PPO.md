@@ -33,3 +33,33 @@ KL散度衡量的是从Q走到P要花多少额外的信息代价，DKL(P||Q) != 
     这里需要说明的是：在Ref生成概率的时候采取的为教师强制的方法，即Ref模型不输出新的token，因为它已经有了Actor模型给的response答案，把答案的token作为decoder的输入，去预测一个得到一个概率，但不根据这个概率产生新的输出token并作为下一次的输入，而是继续采用答案token作为输入，即通过“知道答案”去预测答案，看它自己本来的倾向有多大。  
 
 在KL散度方面有 DKL(Actor||Ref) = Ex~actor(x)*[log(actor(x)/ref(x))]，这个值越小意味着两个分布的相似性越高
+## 3.3 Critic Model  
+用于预测期望总收益Vt，即1.2提到的价值函数，为强化学习的训练目标，需要同Actor一样做参数更新，在模型结构上有RW阶段的RM模型初始化而来，同RM模型去掉原本decoder的linear+softmax，重新接了一个线性层输出Vt。  
+
+  · 到此为止，我们从RW阶段得到RM输出的分数，是一个样本集的奖励，即一条prompt+response；而我们需要每个token的具体反馈，才能完成价值函数  
+  · Policy Gradient策略梯度需要优势，而这个值我们只能通过Critic来估算，即在t时刻，给不出客观存在的总收益Vt，只能通过训练一个模型来预测    
+  
+critic的本质目标是是在每一个状态st下预测，如果从这里继续生成，将来能得到的总奖励是多少。这个「总奖励」，在 RLHF 中 通常简化为整个 response 得到的 reward（因为我们只有句子级 reward）。  
+举例：在实际训练时，我们会把response一次性生成出来，假设是一个长度为T的token序列，那么可以构造T个状态：  
+- s1 = prompt + token1
+- s2 = prompt + token1 + token2
+- ...
+然后在每个st上都用 critic输出一个值Vt，代表**从这一点往后走，能拿到多少reward**，由于我们只有整段段reward，所以我们简单把这个R当作每个st的监督信号（一种方法，最常见也是最简单的方法，把整句的reward R直接作为所有step的目标值。）。
+## 3.4 Reward Model  
+具体介绍见RW.md，不过这里需要注意的一点是，在RLHF的强化学习阶段，它的参数被冻结，仅用于为完整的response打分，而非提供每个token的即时收益。
+
+# 4、Loss计算
+## 4.1 Actor loss
+（1）直观设计  
+Actor接收上文St，产生token At，即输出概率P(At|St)，Critic模型根据St，At，产生对总收益的预测Vt。那么Actor_loss = - ∑Vt*logP(At|St)  
+需要最小化这个损失，直观理解上，Vt>0，证明critic给了当前采取动作的正反馈，因此提高P(At|St)，从而减小loss；Vt<0，意味着Critic对Actor给了负反馈，所以要降低P(At｜St)，从而达到减小loss的作用。  
+（2）引入优势  
+对于NLP任务来说，如果Critic对At对总收益预测为Vt，但实际执行At后的总收益是Rt + βVt+1 ，那么可以定义优势为Advt = Rt + βVt+1 - Vt  
+用优势来替换掉原来预测的总收益，则此刻Actor_loss = -∑Advt * logP(At|St)   
+（3）重新设计Rt（非R）  
+按照上述的理解，Rt应该表示每个Actor产出token At带来的即时收益，然而并非如此，在deepspeed的RLHF实践中，对Rt做了另一种设计，具体见下图
+<div align=center>
+  <img src="https://github.com/user-attachments/assets/d6a12075-030f-4dc7-8ce2-f0bf27235f61" width="500" />
+</div>
+其中kl_ctl为一个控制比例的缩放因子，而-log(..)为KL散度计算公式，目的是防止训歪。  
+所以综上，当t != T时，即非最后一个token时，Rt更加关心Actor有没有在Ref的约束下生产tokenAt，而当t = T时，不仅关心是否遵从了Ref的约束，也关心真正的收益R（此时Rt就是上面提到的R）
