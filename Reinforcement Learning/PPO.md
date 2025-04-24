@@ -30,4 +30,6 @@ KL散度衡量的是从Q走到P要花多少额外的信息代价，DKL(P||Q) != 
 对于Actor Model输出response时，对每个生成的token都会有对应的概率，同样的对于Ref模型，将Actor生成的prompt+response也喂给它，同样能给出每个token的prob结果  
 
 
-    实打实的
+    这里需要说明的是：在Ref生成概率的时候采取的为教师强制的方法，即Ref模型不输出新的token，因为它已经有了Actor模型给的response答案，把答案的token作为decoder的输入，去预测一个得到一个概率，但不根据这个概率产生新的输出token并作为下一次的输入，而是继续采用答案token作为输入，即通过“知道答案”去预测答案，看它自己本来的倾向有多大。  
+
+在KL散度方面有 DKL(Actor||Ref) = Ex~actor(x)*[log(actor(x)/ref(x))]，这个值越小意味着两个分布的相似性越高
