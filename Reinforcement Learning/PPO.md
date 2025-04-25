@@ -96,3 +96,12 @@ Actor接收上文St，产生token At，即输出概率P(At|St)，Critic模型根
 - 我们重复利用了1个batch的数据，使本来只能被用来做1次模型更新的它现在能被用来做ppo_epochs次模型更新。我们使用真正吃了batch，产出经验值的那个时刻的Actor分布来约束ppo_epochs中更新的Actor分布  
 - 我们考虑了剪裁机制（clip），在ppo_epochs次更新中，一旦Actor的更新幅度超过我们的控制范围，则不对它进行参数更新。
 ## 4.2 Critic loss  
+critic模型会预测每个时间t的总收益Vt，那么他的标签是什么呢？前面有提到Vt = Rt + βVt+1 ，Vt为预测值，而Rt + βVt+1显然是比Vt更接近t时刻真值总收益多一个值  
+所以第一想法为critic_loss = (Rt + βVt+1 - Vt)^2  
+（1）实际收益优化  
+由于我们之前引入了优势，优势更加丰富的刻画了实时收益，所以实际收益可以优化为：Advt + Vt  
+（2）预估收益优化
+原始的预估收益为Vt,类比于Actor模型，Critic模型在ppo_epochs也是不断更新的，所以Vt可以理解为Critic old即真正吃了经验的critci模型产生的收益预测  
+预估收益，随着ppo_epochs的进行不断优化而变动。  
+
+  总结：实际收益（Advt，Vt）都是老Critic模型产生的结果，而预估收益是随着ppo_epochs进行变动，两者进行MSE计算取loss来优化模型即可
