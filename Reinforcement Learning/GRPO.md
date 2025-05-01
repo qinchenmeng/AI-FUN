@@ -17,6 +17,7 @@ GRPO优化过程仅需要加载两个模型，一个是目标优化模型，一�
 - 规则奖励：涉及到答案的一致性判别，为了方便实现我们可以严格的要求字符串等同，但效率太差。
 
 
+
   def accuracy_reward(completions, ground_truth, **kwargs):
       """Reward function that checks if the completion is the same as the ground truth."""
       # Regular expression to capture content inside \boxed{}
