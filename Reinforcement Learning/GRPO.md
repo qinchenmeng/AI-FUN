@@ -15,14 +15,11 @@ GRPO优化过程仅需要加载两个模型，一个是目标优化模型，一�
 - ruled-base：指的是按照一定的规则就能确认，如选择题的ABCD选项、字符串匹配和算术题数字、以及围棋，均可以通过确定的规则进行判别。
 （2）基于规则奖励的判别方式：
 - 规则奖励：涉及到答案的一致性判别，为了方便实现我们可以严格的要求字符串等同，但效率太差。
-
-
-
-  def accuracy_reward(completions, ground_truth, **kwargs):
+<pre> def accuracy_reward(completions, ground_truth, **kwargs):
       """Reward function that checks if the completion is the same as the ground truth."""
       # Regular expression to capture content inside \boxed{}
       contents = [completion[0]["content"] for completion in completions]
       answers = [extract_boxed_content(content) for content in contents]
       # Reward 1 if the content is the same as the ground truth, 0 otherwise
-      return [1.0 if answer == gt else 0.0 for answer, gt in zip(answers, ground_truth)]
+      return [1.0 if answer == gt else 0.0 for answer, gt in zip(answers, ground_truth)]</pre>  
 - 
