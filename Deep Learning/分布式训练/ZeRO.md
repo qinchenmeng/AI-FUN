@@ -20,6 +20,7 @@
 <div align=center>
   <img src="https://github.com/user-attachments/assets/3dc95ad1-432a-4d8f-9549-1fab4a5b0a09" width="800" />
 </div>
+
 流程如下：  
 · 存储一份fp32的parameter，momentum和variance（统称model states）  
 · 在forward开始之前，额外开辟一块存储空间，将fp32 parameter减半到fp16 parameter。  
