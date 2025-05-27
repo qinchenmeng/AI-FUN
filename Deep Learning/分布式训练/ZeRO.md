@@ -6,11 +6,12 @@
 大模型在训练时，需要存储如下内容：
 ![image](https://github.com/user-attachments/assets/9a106437-6880-4b1f-ae9f-c5c67f84e29c)
 存储主要分为两大块，Model States和Residual States  
-Model States指的是和模型本身息息相关的，必须存储的内容，具体包括：  
+**Model States**指的是和模型本身息息相关的，必须存储的内容，具体包括：  
 · optimizer states：Adam优化算法中的momentum和variance  
 · gradients：模型梯度  
 · parameters：模型参数W  
-Residual States指并非模型必须的，但在训练过程中会额外产生的内容，具体包括：  
+
+**Residual States**指并非模型必须的，但在训练过程中会额外产生的内容，具体包括：  
 · activation：激活值，在流水线并行中，在backward过程中适用链式法则计算梯度是会用到，有了它计算梯度会更快，但它不是必须存储的，因为可以重新Forward来算它【神经网络中通常会保存激活值和激活函数前的值，用于链式法则梯度计算】  
 · temporary buffers：临时存储，例如把梯度发送到某块GPU上做总聚合时产生的存储  
 · unusable fragment memory：碎片化的存储空间，虽然总存储空间是够的，但是娶不到连续的存储空间，相关的请求也会被fail掉，对这类空间浪费可以通过内存整理来解决。
