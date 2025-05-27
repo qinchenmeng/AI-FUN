@@ -27,3 +27,6 @@
 · 正常做forward和backward，在此之间产生的activation和gradients，都用fp16进行存储。  
 · 用fp16 gradients去更新fp32下的model states。  
 · 当模型收敛后，fp32的parameter就是最终的参数输出。
+## 二、ZeRO-DP
+在整个训练过程中，很多states并不会每时每刻都用到，比如：（1）Adam优化下的optimizer states只在最终做update时才用到；（2）数据并行中，gradients只在最后做AllReduce和update时才用到；（3）参数W只在做forward和backward时才会用到。  
+Zero的思路是如果数据用完即废，需要的时候再从什么地方拿回来
