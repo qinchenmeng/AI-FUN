@@ -36,6 +36,7 @@ Zero的思路是如果数据用完即废，需要的时候再从什么地方拿�
   <img src="https://github.com/user-attachments/assets/47bc2077-20f0-4558-8b9d-14e0c8be3b8d" width="800" />
 </div>
 图中W=fp16，代表fp16的参数矩阵；G=fp16，代表梯度。O=fp32，代表fp32的参数矩阵和momentum和variance  
+
 流程如下：  
 （1）每块GPU上存一份完整的W，将一个batch的数据分成3份，每块GPU各吃一份  
 （2）对梯度做一次AllReduce【求和，广播】，得到完整的梯度G，产生单卡通讯量2Z。此时所有GPU上参数矩阵一致。  
