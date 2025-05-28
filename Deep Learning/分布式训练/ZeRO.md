@@ -30,3 +30,16 @@
 ## 二、ZeRO-DP
 在整个训练过程中，很多states并不会每时每刻都用到，比如：（1）Adam优化下的optimizer states只在最终做update时才用到；（2）数据并行中，gradients只在最后做AllReduce和update时才用到；（3）参数W只在做forward和backward时才会用到。  
 Zero的思路是如果数据用完即废，需要的时候再从什么地方拿回来
+### 2.1 Pos：优化状态分割
+首先从optimizer states开始优化，将opetimizer states分成若干份，每块GPU上各自维护一份，这样就减少了相当一部分的显存开销【Adam算法会为每个参数准备一个momentum和variance，显存会增长2倍。】，如下图：
+<div align=center>
+  <img src="https://github.com/user-attachments/assets/47bc2077-20f0-4558-8b9d-14e0c8be3b8d" width="800" />
+</div>
+图中W=fp16，代表fp16的参数矩阵；G=fp16，代表梯度。O=fp32，代表fp32的参数矩阵和momentum和variance  
+流程如下：  
+（1）每块GPU上存一份完整的W，将一个batch的数据分成3份，每块GPU各吃一份  
+（2）对梯度做一次AllReduce【求和，广播】，得到完整的梯度G，产生单卡通讯量2Z。此时所有GPU上参数矩阵一致。  
+（3）得到完整梯度G，就可以对W做更新，由于W的更新由optimier states和梯度共同决定。由于每块GPU上只保管部分optimizer states，因此只能将相应的W（蓝色部分）进行更新，如下图：
+<div align=center>
+  <img src="https://github.com/user-attachments/assets/fad870e3-7854-440c-b674-56a3396dfdef" width="800" />
+</div>
