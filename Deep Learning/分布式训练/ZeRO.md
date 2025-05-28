@@ -46,7 +46,7 @@ Zero的思路是如果数据用完即废，需要的时候再从什么地方拿�
   <img src="https://github.com/user-attachments/assets/fad870e3-7854-440c-b674-56a3396dfdef" width="800" />
 </div>
 
-（4）此时，每块GPU上都有部分W没有完成更新。所以我们需要对W做一次All-Gather【拼接多个GPU的中间表示】，从别的GPU上把更新好的部分W取回来，产生单卡通讯量Z  
+（4）此时，每块GPU上都有部分W没有完成更新。所以我们需要对W做一次All-Gather【拼接多个GPU的中间表示，不涉及规约】，从别的GPU上把更新好的部分W取回来，产生单卡通讯量Z  
 做完Pos后，设GPU个数为N，模型参数大小为Z，那么根据混合精度训练的定义，可知内存开销为2Z+2Z+KZ【2Z分别是fp16的模型参数和梯度，KZ指的是32fp的模型参数和momentum和variance，因为不一定使用Adam算法，所以这里用KZ代替，如果使用Adam算法，那么K=12】  
 
   那么做完Pos后，显存和通讯量的对比如下：  
