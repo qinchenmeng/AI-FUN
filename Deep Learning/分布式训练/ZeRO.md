@@ -79,3 +79,21 @@ Zero的思路是如果数据用完即废，需要的时候再从什么地方拿�
 既然ZeRO都把参数W给切了，那它应该是个模型并行呀？为什么要归到数据并行里呢？其实ZeRO是模型并行的形式，数据并行的实质。
 模型并行，是指在forward和backward的过程中，我只需要用自己维护的那块W来计算就行。即同样的输入X，每块GPU上各算模型的一部分，最后通过某些方式聚合结果。
 但对ZeRO来说，它做forward和backward的时候，是需要把各GPU上维护的W聚合起来的，即本质上还是用完整的W进行计算。它是不同的输入X，完整的参数W，最终再做聚合。
+
+## 三、ZeRO-R  
+第二章介绍了对model states的显存优化，这一章主要介绍对Residual states的优化
+### 3.1 Partitioned Activation Checkpointing【激活值】  
+前面说过，对activation的存储是灵活的。不像optimizer states，gradients和parameters对模型更新是必须的，activation只是起到加速梯度计算的作用。因此，在哪几层保存activation，保存哪些activation都是可以灵活设置的。同样，我们也可以仿照以上切割方式，每块GPU上只维护部分的activation，需要时再从别的地方聚合过来就行。
+### 3.2  Constant Size Buffer
+固定大小的内存buffer，它的目的在于：  
+· 提升带宽利用率。当GPU数量上升，GPU间的通讯次数也上升，每次的通讯量可能下降（但总通讯量不会变）。数据切片小了，就不能很好利用带宽了。所以这个buffer起到了积攒数据的作用：等数据积攒到一定大小，再进行通讯。  
+· 使得存储大小可控。在每次通讯前，积攒的存储大小是常量，是已知可控的。更方便使用者对训练中的存储消耗和通讯时间进行预估。
+### 3.3 Memory Defragmentation
+在前文提过，设置机制，对碎片化的存储空间进行重新整合，整出连续的存储空间。防止出现总存储足够，但连续存储不够而引起的存储请求fail
+## 四、ZeRO-Offload和ZeRO-Infinity
+ZeRO-Offload。它的核心思想是：显存不够，内存来凑。如果我把要存储的大头卸载(offload)到CPU上，而把计算部分放到GPU上，这样比起跨机，是不是能既降显存，也能减少一些通讯压力呢？
+ZeRO-Offloard的做法是：  
+· forward和backward计算量高，因此和它们相关的部分，例如参数W（fp16），activation，就全放入GPU。  
+· update的部分计算量低，因此和它相关的部分，全部放入CPU中。例如W(fp32)，optimizer states（fp32）和gradients(fp16)等。
+![image](https://github.com/user-attachments/assets/7c38720a-7916-4443-9f90-db8f11abe853)
+ZeRO-infinity也是同理，它们在解决的事情都是：找个除GPU之外的地方，存数据
