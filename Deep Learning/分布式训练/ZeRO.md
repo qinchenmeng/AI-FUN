@@ -66,6 +66,7 @@ Zero的思路是如果数据用完即废，需要的时候再从什么地方拿�
 ### 2.3 Pos + Pg + Pp：优化状态、梯度与参数分割  
 现在我们除了把 O【optimizer states】,G【gradients】切开，也可以把W【parameters】切开。如下图
 ![image](https://github.com/user-attachments/assets/f6ba6a4f-000a-4253-86e4-1700a999c229)
+
 数据并行的流程如下：  
 （1）每块GPU上只保存部分参数W，将一个batch的数据分成3份，每个GPU各吃一份。  
 （2）做FWD时，对W做一次All-Gather，取回分布在别的GPU上的W，得到一份完整的W，单卡通讯量Z，forward做完，立刻把不是自己维护的W抛弃。  
