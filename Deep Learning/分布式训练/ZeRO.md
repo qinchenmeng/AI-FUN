@@ -40,7 +40,7 @@ Zero的思路是如果数据用完即废，需要的时候再从什么地方拿�
 
 流程如下：  
 （1）每块GPU上存一份完整的W，将一个batch的数据分成3份，每块GPU各吃一份  
-（2）对梯度做一次AllReduce【求和/求平均后，广播】，得到完整的梯度G，产生单卡通讯量2Z。在此之前所有GPU上参数矩阵一致，此时获得了完整梯度。  
+（2）对梯度做一次AllReduce【求和/求平均后，广播】，得到完整的梯度G，产生单卡通讯量2Z。在此之前所有GPU上参数矩阵一致，此时获得了完整梯度。【这里其实做Reduce-Scatter即可，只收集部分梯度块】  
 （3）得到完整梯度G，就可以对W做更新，由于W的更新由optimier states和梯度共同决定。由于每块GPU上只保管部分optimizer states，因此只能将相应的W（蓝色部分）进行更新，如下图：
 <div align=center>
   <img src="https://github.com/user-attachments/assets/fad870e3-7854-440c-b674-56a3396dfdef" width="800" />
