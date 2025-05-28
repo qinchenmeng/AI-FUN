@@ -5,6 +5,7 @@
 ### 1.1 存储分类
 大模型在训练时，需要存储如下内容：
 ![image](https://github.com/user-attachments/assets/9a106437-6880-4b1f-ae9f-c5c67f84e29c)
+
 存储主要分为两大块，Model States和Residual States  
 **Model States**指的是和模型本身息息相关的，必须存储的内容，具体包括：  
 · optimizer states：Adam优化算法中的momentum和variance  
