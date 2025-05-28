@@ -96,4 +96,5 @@ ZeRO-Offloard的做法是：
 · forward和backward计算量高，因此和它们相关的部分，例如参数W（fp16），activation，就全放入GPU。  
 · update的部分计算量低，因此和它相关的部分，全部放入CPU中。例如W(fp32)，optimizer states（fp32）和gradients(fp16)等。
 ![image](https://github.com/user-attachments/assets/7c38720a-7916-4443-9f90-db8f11abe853)
+
 ZeRO-infinity也是同理，它们在解决的事情都是：找个除GPU之外的地方，存数据
